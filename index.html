@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Sistem Informasi LP Grafik - Optimasi Produksi</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f6f9; }
+    .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    input, button { padding: 8px; margin: 5px 0; width: 100%; box-sizing: border-box; }
+    button { background-color: #007bff; color: white; border: none; cursor: pointer; border-radius: 4px; }
+    .result { background: #e9ecef; padding: 15px; border-radius: 4px; margin-top: 15px; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h2>Sistem Informasi Optimasi LP (Metode Grafik)</h2>
+  <div class="grid">
+    <div>
+      <h3>Input Fungsi & Kendala</h3>
+      <label>Profit X1 (Rp):</label>
+      <input type="number" id="c1" value="150000">
+      <label>Profit X2 (Rp):</label>
+      <input type="number" id="c2" value="100000">
+      
+      <h4>Kendala 1 (Kain)</h4>
+      <input type="number" id="a11" value="3"> X1 + <input type="number" id="a12" value="2"> X2 &le; <input type="number" id="b1" value="60">
+      
+      <h4>Kendala 2 (Jam Kerja)</h4>
+      <input type="number" id="a21" value="2"> X1 + <input type="number" id="a22" value="4"> X2 &le; <input type="number" id="b2" value="80">
+      
+      <button onclick="hitungLP()">Hitung Optimasi</button>
+    </div>
+    <div>
+      <canvas id="lpChart"></canvas>
+    </div>
+  </div>
+  <div class="result" id="output">
+    <b>Hasil Analisis:</b> Silakan klik tombol hitung.
+  </div>
+</div>
+
+<script>
+let chartInstance = null;
+
+function hitungLP() {
+  const c1 = parseFloat(document.getElementById('c1').value);
+  const c2 = parseFloat(document.getElementById('c2').value);
+  
+  const a11 = parseFloat(document.getElementById('a11').value), a12 = parseFloat(document.getElementById('a12').value), b1 = parseFloat(document.getElementById('b1').value);
+  const a21 = parseFloat(document.getElementById('a21').value), a22 = parseFloat(document.getElementById('a22').value), b2 = parseFloat(document.getElementById('b2').value);
+
+  // Titik potong antar dua garis kendala
+  const det = a11 * a22 - a12 * a21;
+  let x1_intersect = (b1 * a22 - a12 * b2) / det;
+  let x2_intersect = (a11 * b2 - b1 * a21) / det;
+
+  // Titik-titik sudut daerah layak (Feasible Region)
+  const points = [
+    { x: 0, y: 0 },
+    { x: b1 / a11, y: 0 },
+    { x: x1_intersect, y: x2_intersect },
+    { x: 0, y: b2 / a22 }
+  ];
+
+  // Cari nilai Z maksimum
+  let maxZ = -1, optimalPoint = null;
+  points.forEach(pt => {
+    let z = c1 * pt.x + c2 * pt.y;
+    if (z > maxZ) {
+      maxZ = z;
+      optimalPoint = pt;
+    }
+  });
+
+  // Tampilkan Hasil
+  document.getElementById('output').innerHTML = `
+    <h4>Rekomendasi Produksi Optimal:</h4>
+    <ul>
+      <li>Produksi Produk X1 (Batik): <b>${optimalPoint.x.toFixed(2)}</b> unit</li>
+      <li>Produksi Produk X2 (Kemeja): <b>${optimalPoint.y.toFixed(2)}</b> unit</li>
+      <li>Keuntungan Maksimum (Z): <b>Rp ${maxZ.toLocaleString('id-ID')}</b></li>
+    </ul>
+  `;
+
+  // Render Grafik
+  renderChart(b1/a11, b1/a12, b2/a21, b2/a22, optimalPoint);
+}
+
+function renderChart(g1X, g1Y, g2X, g2Y, opt) {
+  const ctx = document.getElementById('lpChart').getContext('2d');
+  if(chartInstance) chartInstance.destroy();
+
+  chartInstance = new Chart(ctx, {
+    type: 'scatter',
+    data: {
+      datasets: [
+        { label: 'Kendala 1 (Kain)', data: [{x: 0, y: g1Y}, {x: g1X, y: 0}], showLine: true, borderColor: 'red' },
+        { label: 'Kendala 2 (Waktu)', data: [{x: 0, y: g2Y}, {x: g2X, y: 0}], showLine: true, borderColor: 'blue' },
+        { label: 'Titik Optimal', data: [{x: opt.x, y: opt.y}], backgroundColor: 'green', pointRadius: 8 }
+      ]
+    },
+    options: {
+      scales: {
+        x: { title: { display: true, text: 'Jumlah X1 (Batik)' }, min: 0 },
+        y: { title: { display: true, text: 'Jumlah X2 (Kemeja)' }, min: 0 }
+      }
+    }
+  });
+}
+</script>
+</body>
+</html> 
